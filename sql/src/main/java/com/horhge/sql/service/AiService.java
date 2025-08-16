@@ -66,12 +66,29 @@ public class AiService {
         return result;
     }
 
-    // Extract SQL code block from markdown text
+    // Extract SQL from JSON or markdown text
     private String extractSqlFromMarkdown(String text) {
-        var pattern = java.util.regex.Pattern.compile("```sql\\s*([\\s\\S]*?)```", java.util.regex.Pattern.CASE_INSENSITIVE);
-        var matcher = pattern.matcher(text);
-        if (matcher.find()) {
-            return matcher.group(1).trim();
+        // Try to parse as JSON and extract "SQL" field
+        try {
+            ObjectMapper om = new ObjectMapper();
+            JsonNode node = om.readTree(text);
+            if (node.has("SQL")) {
+                return node.get("SQL").asText();
+            }
+        } catch (Exception ignore) {
+            // Not JSON, fall through to markdown extraction
+        }
+        // Try to match ```sql ... ```
+        var patternSql = java.util.regex.Pattern.compile("```\\s*sql\\s*([\\s\\S]*?)```", java.util.regex.Pattern.CASE_INSENSITIVE);
+        var matcherSql = patternSql.matcher(text);
+        if (matcherSql.find()) {
+            return matcherSql.group(1).trim();
+        }
+        // Fallback: match any triple-backtick code block
+        var patternAny = java.util.regex.Pattern.compile("```([\\s\\S]*?)```");
+        var matcherAny = patternAny.matcher(text);
+        if (matcherAny.find()) {
+            return matcherAny.group(1).trim();
         }
         return null;
     }
@@ -123,9 +140,11 @@ public class AiService {
             var meta = conn.getMetaData();
             var tables = meta.getTables(null, null, "%", new String[]{"TABLE"});
             while (tables.next()) {
+                String schemaName = tables.getString("TABLE_SCHEM");
                 String tableName = tables.getString("TABLE_NAME");
-                schema.append("Table: ").append(tableName).append("\n");
-                var columns = meta.getColumns(null, null, tableName, "%");
+                schema.append("Schema: ").append(schemaName)
+                      .append(" | Table: ").append(tableName).append("\n");
+                var columns = meta.getColumns(null, schemaName, tableName, "%");
                 while (columns.next()) {
                     String colName = columns.getString("COLUMN_NAME");
                     String colType = columns.getString("TYPE_NAME");
