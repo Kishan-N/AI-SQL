@@ -8,12 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.*;
 
 @Service
 public class AiService {
@@ -25,28 +20,45 @@ public class AiService {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    private final ObjectMapper mapper = new ObjectMapper();
+
     public Map<String, Object> queryAi(String prompt) {
         Map<String, Object> result = new HashMap<>();
         try {
-            String hfResponse = HuggingFaceClient.generateText(prompt);
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode root = mapper.readTree(hfResponse);
-            String content = "";
-            if (root.has("choices") && root.get("choices").isArray() && root.get("choices").size() > 0) {
-                JsonNode message = root.get("choices").get(0).get("message");
-                if (message != null && message.has("content")) {
-                    content = message.get("content").asText();
-                }
-            }
-            result.put("summary", content);
+            // Build schema-aware prompt
+            String schemaInfo = getDatabaseSchema();
+            String fullPrompt = "Database schema:\n" + schemaInfo + "\n\nUser question: " + prompt;
 
-            // Try to extract SQL code block from the content
-            String sql = extractSqlFromMarkdown(content);
+            // 1st AI call: generate SQL
+            String hfResponse = HuggingFaceClient.generateText(fullPrompt);
+            JsonNode root = mapper.readTree(hfResponse);
+            String aiContent = extractContent(root);
+            result.put("aiResponse", aiContent); // keep original AI response for reference
+
+            // Extract SQL code
+            String sql = extractSqlFromMarkdown(aiContent);
             if (sql != null && !sql.isEmpty()) {
                 result.put("query", sql);
-                // Execute the SQL and fetch results (with headers)
+
+                // Execute query and fetch results
                 List<List<Object>> rowData = executeSqlQuery(sql);
                 result.put("rowData", rowData);
+
+                // Build JSON array of results for insights
+                String dataJson = buildJsonFromRowData(rowData);
+
+                // 2nd AI call: ask for summary/insights based on data
+                String insightsPrompt = "Given the following SQL result data and the original question, provide a concise summary or insights in markdown format.\n"
+                        + "Original question: " + prompt + "\n"
+                        + "Data: " + dataJson;
+
+                String insightsResponse = HuggingFaceClient.generateText(insightsPrompt);
+                JsonNode insightsRoot = mapper.readTree(insightsResponse);
+                String insightsContent = extractContent(insightsRoot);
+                result.put("summary", insightsContent);
+            } else {
+                // If no SQL, just return the original AI response as summary
+                result.put("summary", aiContent);
             }
         } catch (Exception e) {
             result.put("error", e.getMessage());
@@ -54,23 +66,22 @@ public class AiService {
         return result;
     }
 
-    // Extracts the first SQL code block from markdown text
+    // Extract SQL code block from markdown text
     private String extractSqlFromMarkdown(String text) {
-        Pattern pattern = Pattern.compile("```sql\\s*([\\s\\S]*?)```", Pattern.CASE_INSENSITIVE);
-        Matcher matcher = pattern.matcher(text);
+        var pattern = java.util.regex.Pattern.compile("```sql\\s*([\\s\\S]*?)```", java.util.regex.Pattern.CASE_INSENSITIVE);
+        var matcher = pattern.matcher(text);
         if (matcher.find()) {
             return matcher.group(1).trim();
         }
         return null;
     }
 
-    // Dummy implementation: Replace with your actual DB query logic
+    // Execute query with headers
     private List<List<Object>> executeSqlQuery(String sql) {
         List<List<Object>> rows = new ArrayList<>();
         try {
             jdbcTemplate.query(sql, rs -> {
                 int columnCount = rs.getMetaData().getColumnCount();
-                // Add headers as the first row
                 if (rows.isEmpty()) {
                     List<Object> headers = new ArrayList<>();
                     for (int i = 1; i <= columnCount; i++) {
@@ -85,8 +96,59 @@ public class AiService {
                 rows.add(row);
             });
         } catch (Exception e) {
-            // Optionally, handle or log the exception
+            rows.add(List.of("SQL Error: " + e.getMessage()));
         }
         return rows;
+    }
+
+    // Convert query result into JSON string
+    private String buildJsonFromRowData(List<List<Object>> rowData) throws Exception {
+        if (rowData.isEmpty()) return "[]";
+        List<Object> headers = rowData.get(0);
+        List<Map<String, Object>> jsonRows = new ArrayList<>();
+        for (int i = 1; i < rowData.size(); i++) {
+            Map<String, Object> rowObj = new LinkedHashMap<>();
+            for (int j = 0; j < headers.size(); j++) {
+                rowObj.put(headers.get(j).toString(), rowData.get(i).get(j));
+            }
+            jsonRows.add(rowObj);
+        }
+        return mapper.writeValueAsString(jsonRows);
+    }
+
+    // Read DB schema
+    private String getDatabaseSchema() {
+        StringBuilder schema = new StringBuilder();
+        try (var conn = jdbcTemplate.getDataSource().getConnection()) {
+            var meta = conn.getMetaData();
+            var tables = meta.getTables(null, null, "%", new String[]{"TABLE"});
+            while (tables.next()) {
+                String tableName = tables.getString("TABLE_NAME");
+                schema.append("Table: ").append(tableName).append("\n");
+                var columns = meta.getColumns(null, null, tableName, "%");
+                while (columns.next()) {
+                    String colName = columns.getString("COLUMN_NAME");
+                    String colType = columns.getString("TYPE_NAME");
+                    schema.append("  - ").append(colName).append(" (").append(colType).append(")\n");
+                }
+            }
+            tables.close();
+        } catch (Exception e) {
+            schema.append("Could not read schema: ").append(e.getMessage());
+        }
+        return schema.toString();
+    }
+
+    // Extracts assistant response text (supports both message.content and text)
+    private String extractContent(JsonNode root) {
+        if (root.has("choices") && root.get("choices").isArray() && root.get("choices").size() > 0) {
+            JsonNode choice = root.get("choices").get(0);
+            if (choice.has("message") && choice.get("message").has("content")) {
+                return choice.get("message").get("content").asText();
+            } else if (choice.has("text")) {
+                return choice.get("text").asText();
+            }
+        }
+        return "";
     }
 }

@@ -49,7 +49,7 @@ function App() {
      return;
    }
 
-   const content = parsed?.choices?.[0]?.message?.content
+   const content = parsed?.Summary
                 || parsed?.error
                 || 'No content returned';
 
@@ -103,6 +103,14 @@ function App() {
                   ))}
                 </tbody>
               </table>
+            </>
+          )}
+          {result.insights && (
+            <>
+              <h2>Insights</h2>
+              <div style={{ background: '#f0f8ff', padding: 12, borderRadius: 4 }}>
+                <ReactMarkdown>{result.insights}</ReactMarkdown>
+              </div>
             </>
           )}
         </div>
