@@ -57,63 +57,34 @@ function App() {
  };
 
  const renderSummary = (summary) => {
-    let parsed;
-    try {
-      parsed = JSON.parse(summary);
-    } catch {
-      parsed = null;
-    }
-    if (parsed && typeof parsed === 'object' && parsed.Summary) {
-      return (
-        <div>
-          <div style={{ background: '#f8f8f8', padding: 12, borderRadius: 4, marginBottom: 8 }}>
-            <ReactMarkdown>{parsed.Summary}</ReactMarkdown>
-          </div>
-          {parsed.SQL && (
-            <div style={{ marginBottom: 8 }}>
-              <strong>SQL:</strong>
-              <pre style={{ background: '#f4f4f4', padding: 8 }}>{parsed.SQL}</pre>
-            </div>
-          )}
-          {parsed.Explanation && (
-            <div style={{ marginBottom: 8 }}>
-              <strong>Explanation:</strong>
-              <ReactMarkdown>{parsed.Explanation}</ReactMarkdown>
-            </div>
-          )}
-          {parsed.Data && Array.isArray(parsed.Data) && parsed.Data.length > 0 && (
-            <div>
-              <strong>Data:</strong>
-              <table border="1" style={{ marginTop: 8 }}>
-                <thead>
-                  <tr>
-                    {Object.keys(parsed.Data[0]).map((key) => (
-                      <th key={key}>{key}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {parsed.Data.map((row, i) => (
-                    <tr key={i}>
-                      {Object.values(row).map((cell, j) => (
-                        <td key={j}>{cell}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      );
-    }
-    // fallback: render as markdown
+  let parsed;
+  try {
+    parsed = JSON.parse(summary);
+  } catch {
+    parsed = null;
+  }
+  if (parsed && typeof parsed === 'object' && parsed.Summary) {
     return (
-      <div style={{ background: '#f8f8f8', padding: 12, borderRadius: 4 }}>
-        <ReactMarkdown>{summary}</ReactMarkdown>
+      <div>
+        <div style={{ background: '#f8f8f8', padding: 12, borderRadius: 4, marginBottom: 8 }}>
+          <ReactMarkdown>{parsed.Summary}</ReactMarkdown>
+        </div>
+        {parsed.Explanation && (
+          <div style={{ marginBottom: 8 }}>
+            <strong>Explanation:</strong>
+            <ReactMarkdown>{parsed.Explanation}</ReactMarkdown>
+          </div>
+        )}
       </div>
     );
-  };
+  }
+  // fallback: render as markdown
+  return (
+    <div style={{ background: '#f8f8f8', padding: 12, borderRadius: 4 }}>
+      <ReactMarkdown>{summary}</ReactMarkdown>
+    </div>
+  );
+};
 
   return (
     <div className="App">
