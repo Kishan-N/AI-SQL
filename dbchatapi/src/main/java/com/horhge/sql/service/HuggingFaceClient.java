@@ -14,15 +14,14 @@ public class HuggingFaceClient {
     private static final String API_URL = "https://router.huggingface.co/v1/chat/completions";
     //private static final String API_URL = "http://localhost:11434/api/chat"; // Local Ollama Server
     private static final String API_TOKEN = System.getenv("API_KEY");
-
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public static String generateText(String prompt) throws IOException {
-        logger.info("Sending prompt to HuggingFace.");
+        logger.info("Sending prompt to AI service");
         URL url = new URL(API_URL);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
-        conn.setRequestProperty("Authorization", "Bearer " + API_TOKEN);
+        conn.setRequestProperty("Authorization", "Bearer " + API_TOKEN); // Comment In case of using local
         conn.setRequestProperty("Content-Type", "application/json");
         conn.setDoOutput(true);
 
@@ -48,7 +47,7 @@ public class HuggingFaceClient {
         payload.put("stream", false);
 
         String jsonInput = mapper.writeValueAsString(payload);
-        logger.debug("HuggingFace request payload: {}", jsonInput);
+        logger.debug("Request payload: {}", jsonInput);
 
         // send request
         try (OutputStream os = conn.getOutputStream()) {
@@ -57,23 +56,25 @@ public class HuggingFaceClient {
 
         // read response
         int code = conn.getResponseCode();
-        logger.debug("HuggingFace response code: {}", code);
+        logger.debug("Response code: {}", code);
         InputStream is = (code == 200) ? conn.getInputStream() : conn.getErrorStream();
 
+        StringBuilder response = new StringBuilder();
         try (BufferedReader br = new BufferedReader(new InputStreamReader(is, "utf-8"))) {
-            StringBuilder response = new StringBuilder();
             String line;
             while ((line = br.readLine()) != null) {
                 response.append(line);
             }
-            logger.debug("HuggingFace response: {}", response.length() > 200 ? response.substring(0, 200) + "..." : response.toString());
             return response.toString();
+        } catch (Exception e) {
+            logger.error("Error reading API response: {}", e.getMessage());
+            throw new IOException("Error reading API response: " + e.getMessage(), e);
         }
     }
 
     // Add this method for image generation
     public static String generateImage(String prompt) throws IOException {
-        logger.info("Sending image generation prompt to HuggingFace: {}", prompt);
+        logger.info("Sending image generation prompt: {}", prompt);
         String IMAGE_API_URL = "https://router.huggingface.co/nebius/v1/images/generations";
         String model = "sd-legacy/stable-diffusion-v1-5";
 
@@ -89,14 +90,14 @@ public class HuggingFaceClient {
                 "{\"response_format\":\"b64_json\",\"prompt\":%s,\"model\":\"%s\"}",
                 mapper.writeValueAsString(prompt), model
         );
-        logger.debug("HuggingFace image request payload: {}", payload);
+        logger.debug("Image request payload: {}", payload);
 
         try (OutputStream os = conn.getOutputStream()) {
             os.write(payload.getBytes("utf-8"));
         }
 
         int code = conn.getResponseCode();
-        logger.debug("HuggingFace image response code: {}", code);
+        logger.debug("Image response code: {}", code);
         InputStream is = (code == 200) ? conn.getInputStream() : conn.getErrorStream();
 
         // Read response as string
@@ -108,7 +109,10 @@ public class HuggingFaceClient {
             }
         }
         String responseStr = sb.toString();
-        logger.debug("HuggingFace image response: {}", responseStr.length() > 200 ? responseStr.substring(0, 200) + "..." : responseStr);
+
+        if (responseStr.isEmpty()) {
+            throw new IOException("Empty response from image generation API");
+        }
 
         // Parse JSON and extract base64 image
         JsonNode node = mapper.readTree(responseStr);
@@ -116,17 +120,17 @@ public class HuggingFaceClient {
         if (node.has("data") && node.get("data").isArray() && node.get("data").size() > 0) {
             JsonNode imgNode = node.get("data").get(0);
             if (imgNode.has("b64_json")) {
-                logger.info("Image base64 string extracted from HuggingFace response");
+                logger.info("Image base64 string extracted from response");
                 return imgNode.get("b64_json").asText();
             }
         }
         // If error message present, propagate it
         if (node.has("error")) {
             String errMsg = node.get("error").asText();
-            logger.warn("HuggingFace image API error: {}", errMsg);
+            logger.warn("Image API error: {}", errMsg);
             throw new IOException(errMsg);
         }
-        logger.warn("No image found in HuggingFace response");
-        throw new IOException("No image found in HuggingFace response");
+        logger.warn("No image found in response");
+        throw new IOException("No image found in response");
     }
 }

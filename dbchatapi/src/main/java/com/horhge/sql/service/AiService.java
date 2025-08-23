@@ -1,8 +1,6 @@
 package com.horhge.sql.service;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -16,11 +14,6 @@ import org.slf4j.LoggerFactory;
 @Service
 public class AiService {
     private static final Logger logger = LoggerFactory.getLogger(AiService.class);
-
-    @Value("${ai.endpoint.url}")
-    private String aiEndpointUrl;
-
-    private final RestTemplate restTemplate = new RestTemplate();
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -38,9 +31,8 @@ public class AiService {
             // 1st AI call: generate SQL
             logger.debug("Sending prompt to HuggingFace for SQL generation");
             String hfResponse = HuggingFaceClient.generateText(fullPrompt);
-            logger.debug("HuggingFace SQL response: {}", hfResponse);
 
-            // Check for Hugging Face API error in the response JSON
+            // Check for API error in the response JSON
             try {
                 JsonNode errorCheck = mapper.readTree(hfResponse);
                 if (errorCheck.has("error")) {
@@ -77,9 +69,8 @@ public class AiService {
 
                 logger.debug("Sending data to HuggingFace for summary/insights");
                 String insightsResponse = HuggingFaceClient.generateText(insightsPrompt);
-                logger.debug("HuggingFace summary response: {}", insightsResponse);
 
-                // Check for Hugging Face API error in the insights response
+                // Check for API error in the insights response
                 try {
                     JsonNode errorCheck = mapper.readTree(insightsResponse);
                     if (errorCheck.has("error")) {
@@ -112,7 +103,8 @@ public class AiService {
 
                 // 3rd: generate chart image if data exists and charting is enabled
                 if (enableChart && rowData.size() > 1) {
-                    String chartType = (aiChartType != null && !aiChartType.isBlank()) ? aiChartType : extractChartTypeFromPrompt(prompt);
+                    String chartType = (aiChartType != null && !aiChartType.isBlank()) ?
+                                      aiChartType : extractChartTypeFromPrompt(prompt);
                     try {
                         String chartImage = ChartGenerator.generateChart(rowData, chartType);
                         logger.info("Chart generated using JFreeChart, type: {}", chartType);
@@ -142,8 +134,7 @@ public class AiService {
     private String extractSqlFromMarkdown(String text) {
         // Try to parse as JSON and extract "SQL" field
         try {
-            ObjectMapper om = new ObjectMapper();
-            JsonNode node = om.readTree(text);
+            JsonNode node = mapper.readTree(text);
             if (node.has("SQL")) {
                 return node.get("SQL").asText();
             }
@@ -204,16 +195,20 @@ public class AiService {
         return null;
     }
 
-
     // Execute query with headers
     private List<List<Object>> executeSqlQuery(String sql) {
         List<List<Object>> rows = new ArrayList<>();
         String trimmed = sql.trim().toLowerCase(Locale.ROOT);
-        if (trimmed.startsWith("create") || trimmed.startsWith("insert") || trimmed.startsWith("update")) {
+
+        // Security check - only allow SELECT queries
+        if (trimmed.startsWith("create") || trimmed.startsWith("insert") ||
+            trimmed.startsWith("update") || trimmed.startsWith("delete") ||
+            trimmed.startsWith("drop") || trimmed.startsWith("alter")) {
             logger.warn("Blocked forbidden SQL command: {}", sql);
-            rows.add(List.of("SQL Error: Only SELECT queries are allowed. CREATE, INSERT, and UPDATE are not permitted."));
+            rows.add(List.of("SQL Error: Only SELECT queries are allowed for security reasons."));
             return rows;
         }
+
         try {
             logger.debug("Executing SQL query: {}", sql);
             jdbcTemplate.query(sql, rs -> {
@@ -241,15 +236,18 @@ public class AiService {
     // Convert query result into JSON string
     private String buildJsonFromRowData(List<List<Object>> rowData) throws Exception {
         if (rowData.isEmpty()) return "[]";
+
         List<Object> headers = rowData.get(0);
         List<Map<String, Object>> jsonRows = new ArrayList<>();
+
         for (int i = 1; i < rowData.size(); i++) {
             Map<String, Object> rowObj = new LinkedHashMap<>();
-            for (int j = 0; j < headers.size(); j++) {
+            for (int j = 0; j < Math.min(headers.size(), rowData.get(i).size()); j++) {
                 rowObj.put(headers.get(j).toString(), rowData.get(i).get(j));
             }
             jsonRows.add(rowObj);
         }
+
         return mapper.writeValueAsString(jsonRows);
     }
 
@@ -259,11 +257,14 @@ public class AiService {
         try (var conn = jdbcTemplate.getDataSource().getConnection()) {
             var meta = conn.getMetaData();
             var tables = meta.getTables(null, null, "%", new String[]{"TABLE"});
+
             while (tables.next()) {
                 String schemaName = tables.getString("TABLE_SCHEM");
                 String tableName = tables.getString("TABLE_NAME");
+
                 schema.append("Schema: ").append(schemaName)
                       .append(" | Table: ").append(tableName).append("\n");
+
                 var columns = meta.getColumns(null, schemaName, tableName, "%");
                 while (columns.next()) {
                     String colName = columns.getString("COLUMN_NAME");
@@ -280,7 +281,7 @@ public class AiService {
         return schema.toString();
     }
 
-    // Extracts assistant response text (supports both message.content and text)
+    // Extracts assistant response text from AI response
     private String extractContent(JsonNode root) {
         if (root.has("choices") && root.get("choices").isArray() && root.get("choices").size() > 0) {
             JsonNode choice = root.get("choices").get(0);
@@ -290,49 +291,27 @@ public class AiService {
                 return choice.get("text").asText();
             }
         }
-        return "";
-    }
 
-    private String extractContentLocal(JsonNode root) {
+        // Handle Ollama response format
         if (root.has("message") && root.get("message").has("content")) {
             return root.get("message").get("content").asText();
         }
+
         if (root.has("content")) {
             return root.get("content").asText();
         }
-        if (root.has("choices") && root.get("choices").isArray() && root.get("choices").size() > 0) {
-            JsonNode choice = root.get("choices").get(0);
-            if (choice.has("message") && choice.get("message").has("content")) {
-                return choice.get("message").get("content").asText();
-            } else if (choice.has("text")) {
-                return choice.get("text").asText();
-            }
-        }
+
         return "";
     }
 
     // Extract chart type from prompt if user suggests one
     private String extractChartTypeFromPrompt(String prompt) {
         String lower = prompt.toLowerCase();
-        if (lower.contains("bar chart")) return "bar chart";
-        if (lower.contains("pie chart")) return "pie chart";
-        if (lower.contains("line chart")) return "line chart";
-        if (lower.contains("scatter plot")) return "scatter plot";
+        if (lower.contains("bar chart")) return "bar";
+        if (lower.contains("pie chart")) return "pie";
+        if (lower.contains("line chart")) return "line";
+        if (lower.contains("scatter plot")) return "scatter";
         if (lower.contains("histogram")) return "histogram";
-        // Add more as needed
-        return "";
-    }
-
-    // Extract image from AI response (base64 or URL)
-    private String extractImageFromResponse(String response) {
-        try {
-            JsonNode node = mapper.readTree(response);
-            if (node.has("image")) {
-                return node.get("image").asText();
-            }
-            // fallback: if response is just base64 string
-            if (response.trim().startsWith("iVBOR")) return response.trim();
-        } catch (Exception error) {logger.error(String.valueOf(error));}
-        return "";
+        return "bar"; // Default chart type
     }
 }

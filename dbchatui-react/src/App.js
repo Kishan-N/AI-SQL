@@ -14,6 +14,7 @@ function App() {
   const [imageError, setImageError] = useState('');
   const [enableChart, setEnableChart] = useState(true);
   const [showTestApis, setShowTestApis] = useState(false); // default: false
+  const [copiedToClipboard, setCopiedToClipboard] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -100,6 +101,20 @@ function App() {
       else setGeneratedImage(data.image);
     } catch (err) {
       setImageError('Failed to generate image.');
+    }
+  };
+
+  // Copy query to clipboard
+  const handleCopyQuery = () => {
+    if (result && result.query) {
+      navigator.clipboard.writeText(result.query)
+        .then(() => {
+          setCopiedToClipboard(true);
+          setTimeout(() => setCopiedToClipboard(false), 2000); // Reset after 2 seconds
+        })
+        .catch(err => {
+          console.error('Failed to copy query: ', err);
+        });
     }
   };
 
@@ -288,7 +303,24 @@ function App() {
             {renderSummary(result.summary)}
             {result.query && (
               <div data-type="panel">
-                <h2>Query</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h2>Query</h2>
+                  <button
+                    onClick={handleCopyQuery}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '0.9rem',
+                      backgroundColor: copiedToClipboard ? '#4CAF50' : '#f0f0f0',
+                      color: copiedToClipboard ? 'white' : 'black',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s'
+                    }}
+                  >
+                    {copiedToClipboard ? 'Copied!' : 'Copy Query'}
+                  </button>
+                </div>
                 <pre>{result.query}</pre>
               </div>
             )}
