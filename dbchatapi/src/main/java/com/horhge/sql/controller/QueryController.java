@@ -20,10 +20,11 @@ public class QueryController {
     private AiService aiService;
 
     @PostMapping("/query")
-    public ResponseEntity<Map<String, Object>> query(@RequestBody Map<String, String> body) {
-        String prompt = body.getOrDefault("prompt", "");
-        logger.info("/api/query called with prompt: {}", prompt);
-        Map<String, Object> response = aiService.queryAi(prompt);
+    public ResponseEntity<Map<String, Object>> query(@RequestBody Map<String, Object> body) {
+        String prompt = (String) body.getOrDefault("prompt", "");
+        boolean enableChart = body.get("enableChart") instanceof Boolean ? (Boolean) body.get("enableChart") : true;
+        logger.info("/api/query called with prompt: {} (enableChart={})", prompt, enableChart);
+        Map<String, Object> response = aiService.queryAi(prompt, enableChart);
         logger.info("/api/query response: {}", response.keySet());
         if (response.containsKey("error")) {
             logger.error("/api/query error: {}", response.get("error"));

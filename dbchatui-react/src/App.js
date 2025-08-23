@@ -7,11 +7,13 @@ function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
- const [huggingfaceResult, setHuggingfaceResult] = useState('');
+  const [huggingfaceResult, setHuggingfaceResult] = useState('');
   const [hfPrompt, setHfPrompt] = useState('');
   const [imagePrompt, setImagePrompt] = useState('');
   const [generatedImage, setGeneratedImage] = useState('');
   const [imageError, setImageError] = useState('');
+  const [enableChart, setEnableChart] = useState(true);
+  const [showTestApis, setShowTestApis] = useState(false); // default: false
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,7 +24,7 @@ function App() {
       const response = await fetch('/api/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, enableChart }),
       });
       const data = await response.json();
       if (data.error) setError(data.error);
@@ -36,85 +38,85 @@ function App() {
     console.log(huggingfaceResult);
   }, [huggingfaceResult]);
 
- const handleHuggingFace = async () => {
-   const response = await fetch('http://localhost:8080/api/huggingface', {
-     method: 'POST',
-     headers: { 'Content-Type': 'application/json' },
-     body: JSON.stringify({ prompt: hfPrompt }),
-   });
-   const data = await response.json();
-
-   let parsed;
-   try {
-     parsed = JSON.parse(data.huggingface);
-   } catch (err) {
-     setHuggingfaceResult('Invalid JSON from backend');
-     return;
-   }
-
-   const content = parsed?.Summary
-                || parsed?.error
-                || 'No content returned';
-
-   setHuggingfaceResult(content);
- };
-
- const handleGenerateImage = async () => {
-  setGeneratedImage('');
-  setImageError('');
-  try {
-    const response = await fetch('/api/generate-image', {
+  const handleHuggingFace = async () => {
+    const response = await fetch('http://localhost:8080/api/huggingface', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: imagePrompt }),
+      body: JSON.stringify({ prompt: hfPrompt }),
     });
     const data = await response.json();
-    if (data.error) setImageError(data.error);
-    else setGeneratedImage(data.image);
-  } catch (err) {
-    setImageError('Failed to generate image.');
-  }
-};
 
- const renderSummary = (summary) => {
-  let parsed;
-  try {
-    parsed = JSON.parse(summary);
-  } catch {
-    parsed = null;
-  }
-  if (parsed && typeof parsed === 'object') {
-    return (
-      <div>
-        {parsed.Summary && (
-          <div style={{ background: '#f8f8f8', padding: 12, borderRadius: 4, marginBottom: 8 }}>
-            <ReactMarkdown>{parsed.Summary}</ReactMarkdown>
-          </div>
-        )}
-        {parsed.Explanation && (
-          <div style={{ marginBottom: 8 }}>
-            <strong>Explanation:</strong>
-            <ReactMarkdown>{parsed.Explanation}</ReactMarkdown>
-          </div>
-        )}
-      </div>
-    );
-  }
-  // If summary is a markdown table (pipe table)
-  if (typeof summary === 'string' && summary.trim().startsWith('|') && summary.includes('\n|')) {
+    let parsed;
+    try {
+      parsed = JSON.parse(data.huggingface);
+    } catch (err) {
+      setHuggingfaceResult('Invalid JSON from backend');
+      return;
+    }
+
+    const content = parsed?.Summary
+                 || parsed?.error
+                 || 'No content returned';
+
+    setHuggingfaceResult(content);
+  };
+
+  const handleGenerateImage = async () => {
+    setGeneratedImage('');
+    setImageError('');
+    try {
+      const response = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: imagePrompt }),
+      });
+      const data = await response.json();
+      if (data.error) setImageError(data.error);
+      else setGeneratedImage(data.image);
+    } catch (err) {
+      setImageError('Failed to generate image.');
+    }
+  };
+
+  const renderSummary = (summary) => {
+    let parsed;
+    try {
+      parsed = JSON.parse(summary);
+    } catch {
+      parsed = null;
+    }
+    if (parsed && typeof parsed === 'object') {
+      return (
+        <div>
+          {parsed.Summary && (
+            <div style={{ background: '#f8f8f8', padding: 12, borderRadius: 4, marginBottom: 8 }}>
+              <ReactMarkdown>{parsed.Summary}</ReactMarkdown>
+            </div>
+          )}
+          {parsed.Explanation && (
+            <div style={{ marginBottom: 8 }}>
+              <strong>Explanation:</strong>
+              <ReactMarkdown>{parsed.Explanation}</ReactMarkdown>
+            </div>
+          )}
+        </div>
+      );
+    }
+    // If summary is a markdown table (pipe table)
+    if (typeof summary === 'string' && summary.trim().startsWith('|') && summary.includes('\n|')) {
+      return (
+        <div style={{ background: '#f8f8f8', padding: 12, borderRadius: 4 }}>
+          <ReactMarkdown>{summary}</ReactMarkdown>
+        </div>
+      );
+    }
+    // fallback: render as markdown
     return (
       <div style={{ background: '#f8f8f8', padding: 12, borderRadius: 4 }}>
         <ReactMarkdown>{summary}</ReactMarkdown>
       </div>
     );
-  }
-  // fallback: render as markdown
-  return (
-    <div style={{ background: '#f8f8f8', padding: 12, borderRadius: 4 }}>
-      <ReactMarkdown>{summary}</ReactMarkdown>
-    </div>
-  );
-};
+  };
 
   return (
   <div>
@@ -151,6 +153,15 @@ function App() {
           placeholder="Enter your prompt..."
         />
         <button type="submit" disabled={loading || !prompt.trim()}>Ask</button>
+        <label style={{ marginLeft: 16, fontSize: 14 }}>
+          <input
+            type="checkbox"
+            checked={enableChart}
+            onChange={e => setEnableChart(e.target.checked)}
+            style={{ marginRight: 4 }}
+          />
+          Enable chart generation
+        </label>
       </form>
       {loading && <p>Loading...</p>}
       {error && <p style={{color:'red'}}>{error}</p>}
@@ -193,7 +204,7 @@ function App() {
               </div>
             </>
           )}
-          {result.chartImage && (
+          {result.chartImage && enableChart && (
             <>
               <h2>Chart</h2>
               <div style={{ margin: '16px 0' }}>
@@ -207,48 +218,54 @@ function App() {
           )}
         </div>
       )}
-      <div style={{ marginTop: 32, padding: 16, border: '1px solid #ccc' }}>
-        <h3>Test Hugging Face API</h3>
-        <input
-          type="text"
-          value={hfPrompt}
-          onChange={e => setHfPrompt(e.target.value)}
-          placeholder="Enter prompt for Hugging Face"
-          style={{ width: '60%' }}
-        />
-        <button onClick={handleHuggingFace} style={{ marginLeft: 8 }}>
-          Send to Hugging Face
-        </button>
-        <div style={{ marginTop: 16 }}>
-          <strong>Hugging Face Response:</strong>
-          <pre style={{ background: '#f4f4f4', padding: 8 }}>
-            {huggingfaceResult}
-          </pre>
+      {/* Test Hugging Face API UI, conditionally rendered */}
+      {showTestApis && (
+        <div style={{ marginTop: 32, padding: 16, border: '1px solid #ccc' }}>
+          <h3>Test Hugging Face API</h3>
+          <input
+            type="text"
+            value={hfPrompt}
+            onChange={e => setHfPrompt(e.target.value)}
+            placeholder="Enter prompt for Hugging Face"
+            style={{ width: '60%' }}
+          />
+          <button onClick={handleHuggingFace} style={{ marginLeft: 8 }}>
+            Send to Hugging Face
+          </button>
+          <div style={{ marginTop: 16 }}>
+            <strong>Hugging Face Response:</strong>
+            <pre style={{ background: '#f4f4f4', padding: 8 }}>
+              {huggingfaceResult}
+            </pre>
+          </div>
         </div>
-      </div>
-      <div style={{ marginTop: 32, padding: 16, border: '1px solid #ccc' }}>
-        <h3>Test Image Generation API</h3>
-        <input
-          type="text"
-          value={imagePrompt}
-          onChange={e => setImagePrompt(e.target.value)}
-          placeholder="Enter prompt for image generation"
-          style={{ width: '60%' }}
-        />
-        <button onClick={handleGenerateImage} style={{ marginLeft: 8 }}>
-          Generate Image
-        </button>
-        <div style={{ marginTop: 16 }}>
-          {imageError && <span style={{ color: 'red' }}>{imageError}</span>}
-          {generatedImage && (
-            <img
-              src={`data:image/png;base64,${generatedImage}`}
-              alt="Generated"
-              style={{ maxWidth: '100%', border: '1px solid #ccc', borderRadius: 8 }}
-            />
-          )}
+      )}
+      {/* Test Image Generation API UI, conditionally rendered */}
+      {showTestApis && (
+        <div style={{ marginTop: 32, padding: 16, border: '1px solid #ccc' }}>
+          <h3>Test Image Generation API</h3>
+          <input
+            type="text"
+            value={imagePrompt}
+            onChange={e => setImagePrompt(e.target.value)}
+            placeholder="Enter prompt for image generation"
+            style={{ width: '60%' }}
+          />
+          <button onClick={handleGenerateImage} style={{ marginLeft: 8 }}>
+            Generate Image
+          </button>
+          <div style={{ marginTop: 16 }}>
+            {imageError && <span style={{ color: 'red' }}>{imageError}</span>}
+            {generatedImage && (
+              <img
+                src={`data:image/png;base64,${generatedImage}`}
+                alt="Generated"
+                style={{ maxWidth: '100%', border: '1px solid #ccc', borderRadius: 8 }}
+              />
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
     </div>
   );

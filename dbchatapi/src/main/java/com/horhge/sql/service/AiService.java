@@ -26,10 +26,10 @@ public class AiService {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public Map<String, Object> queryAi(String prompt) {
+    public Map<String, Object> queryAi(String prompt, boolean enableChart) {
         Map<String, Object> result = new HashMap<>();
         try {
-            logger.info("Received prompt: {}", prompt);
+            logger.info("Received prompt: {} (enableChart={})", prompt, enableChart);
             // Build schema-aware prompt
             String schemaInfo = getDatabaseSchema();
             String fullPrompt = "Database schema:\n" + schemaInfo + "\n\nUser question: " + prompt;
@@ -82,8 +82,8 @@ public class AiService {
                     logger.warn("Could not extract ChartType from AI summary: {}", e.getMessage());
                 }
 
-                // 3rd: generate chart image if data exists
-                if (rowData.size() > 1) {
+                // 3rd: generate chart image if data exists and charting is enabled
+                if (enableChart && rowData.size() > 1) {
                     String chartType = (aiChartType != null && !aiChartType.isBlank()) ? aiChartType : extractChartTypeFromPrompt(prompt);
                     try {
                         String chartImage = ChartGenerator.generateChart(rowData, chartType);
