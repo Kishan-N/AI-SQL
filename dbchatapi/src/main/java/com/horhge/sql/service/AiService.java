@@ -165,6 +165,46 @@ public class AiService {
         return null;
     }
 
+    // Extract SQL from JSON or markdown text
+    private String extractSqlFromMarkdownLocal(String text) {
+        // Try to parse as JSON and extract "SQL" field
+        try {
+            ObjectMapper om = new ObjectMapper();
+            JsonNode node = om.readTree(text);
+            if (node.has("SQL")) {
+                return node.get("SQL").asText();
+            }
+        } catch (Exception ignore) {
+            // Not JSON, fall through to markdown extraction
+        }
+        var patternJson = java.util.regex.Pattern.compile("```\\s*json\\s*([\\s\\S]*?)```", java.util.regex.Pattern.CASE_INSENSITIVE);
+        var matcherJson = patternJson.matcher(text);
+        if (matcherJson.find()) {
+            String jsonBlock = matcherJson.group(1).trim();
+            try {
+                ObjectMapper om = new ObjectMapper();
+                JsonNode node = om.readTree(jsonBlock);
+                if (node.has("SQL")) {
+                    return node.get("SQL").asText();
+                }
+            } catch (Exception ignore) {}
+        }
+        // Try to match ```sql ... ```
+        var patternSql = java.util.regex.Pattern.compile("```\\s*sql\\s*([\\s\\S]*?)```", java.util.regex.Pattern.CASE_INSENSITIVE);
+        var matcherSql = patternSql.matcher(text);
+        if (matcherSql.find()) {
+            return matcherSql.group(1).trim();
+        }
+        // Fallback: match any triple-backtick code block
+        var patternAny = java.util.regex.Pattern.compile("```([\\s\\S]*?)```");
+        var matcherAny = patternAny.matcher(text);
+        if (matcherAny.find()) {
+            return matcherAny.group(1).trim();
+        }
+        return null;
+    }
+
+
     // Execute query with headers
     private List<List<Object>> executeSqlQuery(String sql) {
         List<List<Object>> rows = new ArrayList<>();
@@ -242,6 +282,24 @@ public class AiService {
 
     // Extracts assistant response text (supports both message.content and text)
     private String extractContent(JsonNode root) {
+        if (root.has("choices") && root.get("choices").isArray() && root.get("choices").size() > 0) {
+            JsonNode choice = root.get("choices").get(0);
+            if (choice.has("message") && choice.get("message").has("content")) {
+                return choice.get("message").get("content").asText();
+            } else if (choice.has("text")) {
+                return choice.get("text").asText();
+            }
+        }
+        return "";
+    }
+
+    private String extractContentLocal(JsonNode root) {
+        if (root.has("message") && root.get("message").has("content")) {
+            return root.get("message").get("content").asText();
+        }
+        if (root.has("content")) {
+            return root.get("content").asText();
+        }
         if (root.has("choices") && root.get("choices").isArray() && root.get("choices").size() > 0) {
             JsonNode choice = root.get("choices").get(0);
             if (choice.has("message") && choice.get("message").has("content")) {

@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 public class HuggingFaceClient {
     private static final Logger logger = LoggerFactory.getLogger(HuggingFaceClient.class);
     private static final String API_URL = "https://router.huggingface.co/v1/chat/completions";
+    //private static final String API_URL = "http://localhost:11434/api/chat"; // Local Ollama Server
     private static final String API_TOKEN = System.getenv("API_KEY");
 
     private static final ObjectMapper mapper = new ObjectMapper();
@@ -30,8 +31,10 @@ public class HuggingFaceClient {
             You are an AI assistant that helps with SQL databases.
             Always respond in JSON with the following keys:
             Summary, SQL, Explanation, Data, ChartType
+            Always prefix table names with the schema name (e.g., schema.table) while generating the SQL.
             ChartType should be one of: bar, pie, line, scatter, histogram, or leave blank if not applicable.
             If the data is suitable for a chart, suggest the most appropriate chart type.
+            Do not enter anything else after the JSON.
             """;
 
         // build request payload safely (no string concat)
@@ -40,7 +43,8 @@ public class HuggingFaceClient {
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("messages", List.of(systemMsg, userMsg));
-        payload.put("model", "openai/gpt-oss-120b:groq");
+        // payload.put("model", "openai/gpt-oss-120b:groq");
+        payload.put("model", "hf.co/bartowski/Qwen2.5-3B-Instruct-GGUF:Q4_K_M"); // Local Ollama Server
         payload.put("stream", false);
 
         String jsonInput = mapper.writeValueAsString(payload);
