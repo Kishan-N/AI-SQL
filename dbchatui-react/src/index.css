@@ -1,0 +1,109 @@
+/* General reset */
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #fff;
+  color: #000;
+}
+
+/* Main App container */
+.App {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+/* Headings */
+h1 {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 24px;
+}
+
+h2 {
+  font-size: 1.4rem;
+  margin-top: 32px;
+  margin-bottom: 12px;
+  font-weight: bold;
+}
+
+h3 {
+  font-size: 1.2rem;
+  margin-top: 24px;
+  margin-bottom: 12px;
+  font-weight: bold;
+}
+
+/* Highlighted subtitles in red */
+h2, h3 {
+  color: #d40000; /* SocGen red */
+}
+
+/* Input + buttons */
+input[type="text"] {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 60%;
+  font-size: 1rem;
+}
+
+button {
+  padding: 10px 18px;
+  margin-left: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  border-radius: 4px;
+}
+
+button[type="submit"],
+button:not([type]) {
+  background-color: #d40000;
+  color: #fff;
+}
+
+button:hover {
+  background-color: #a00000;
+}
+
+/* Table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+table th,
+table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: center;
+}
+
+table th {
+  background-color: #f8f8f8;
+  font-weight: bold;
+}
+
+/* Panels */
+div[data-type="panel"] {
+  border: 1px solid #ccc;
+  padding: 16px;
+  margin-top: 24px;
+  border-radius: 4px;
+  background: #fafafa;
+}
+
+/* Hugging Face response block */
+pre {
+  background: #f4f4f4;
+  padding: 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 0.9rem;
+}
+
+nav {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}

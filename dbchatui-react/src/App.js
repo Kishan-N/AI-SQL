@@ -87,6 +87,30 @@ function App() {
 };
 
   return (
+  <div>
+                <nav style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: '#fff',
+                  border: '1px solid #000',
+                  padding: '12px 32px',
+                  marginBottom: 32
+                }}>
+                  <img
+                    src="/logo.png"
+                    alt="SocGen Logo"
+                    style={{ height: 40, marginRight: 16 }}
+                  />
+                  <div style={{
+                    width: 1,
+                    height: 32,
+                    background: '#ccc',
+                    margin: '0 20px'
+                  }} />
+                  <span style={{ color: '#000', fontWeight: 'bold', fontSize: 20 }}>
+                    Database Chat UI
+                  </span>
+                </nav>
     <div className="App">
       <h1>Database Chat UI</h1>
       <form onSubmit={handleSubmit}>
@@ -139,6 +163,18 @@ function App() {
               </div>
             </>
           )}
+          {result.chartImage && (
+            <>
+              <h2>Chart</h2>
+              <div style={{ margin: '16px 0' }}>
+                <img
+                  src={`data:image/png;base64,${result.chartImage}`}
+                  alt="Generated Chart"
+                  style={{ maxWidth: '100%', border: '1px solid #ccc', borderRadius: 8 }}
+                />
+              </div>
+            </>
+          )}
         </div>
       )}
       <div style={{ marginTop: 32, padding: 16, border: '1px solid #ccc' }}>
@@ -160,6 +196,7 @@ function App() {
           </pre>
         </div>
       </div>
+    </div>
     </div>
   );
 }

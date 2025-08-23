@@ -56,6 +56,20 @@ public class AiService {
                 JsonNode insightsRoot = mapper.readTree(insightsResponse);
                 String insightsContent = extractContent(insightsRoot);
                 result.put("summary", insightsContent);
+
+                // 3rd AI call: generate chart image if data exists
+                if (rowData.size() > 1) {
+                    String chartType = extractChartTypeFromPrompt(prompt);
+                    String chartPrompt = "Given the following data in JSON, generate a " +
+                        (chartType.isEmpty() ? "chart" : chartType) +
+                        " that best visualizes the data for a presentation. " +
+                        "Return a base64-encoded PNG image. Data: " + dataJson;
+
+                    String chartResponse = HuggingFaceClient.generateImage(chartPrompt);
+                    // Assume generateImage returns a base64 string or a JSON with { "image": "..." }
+                    String chartImage = extractImageFromResponse(chartResponse);
+                    result.put("chartImage", chartImage);
+                }
             } else {
                 // If no SQL, just return the original AI response as summary
                 result.put("summary", aiContent);
@@ -168,6 +182,31 @@ public class AiService {
                 return choice.get("text").asText();
             }
         }
+        return "";
+    }
+
+    // Extract chart type from prompt if user suggests one
+    private String extractChartTypeFromPrompt(String prompt) {
+        String lower = prompt.toLowerCase();
+        if (lower.contains("bar chart")) return "bar chart";
+        if (lower.contains("pie chart")) return "pie chart";
+        if (lower.contains("line chart")) return "line chart";
+        if (lower.contains("scatter plot")) return "scatter plot";
+        if (lower.contains("histogram")) return "histogram";
+        // Add more as needed
+        return "";
+    }
+
+    // Extract image from AI response (base64 or URL)
+    private String extractImageFromResponse(String response) {
+        try {
+            JsonNode node = mapper.readTree(response);
+            if (node.has("image")) {
+                return node.get("image").asText();
+            }
+            // fallback: if response is just base64 string
+            if (response.trim().startsWith("iVBOR")) return response.trim();
+        } catch (Exception ignore) {}
         return "";
     }
 }

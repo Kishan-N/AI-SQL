@@ -56,4 +56,39 @@ public class HuggingFaceClient {
             return response.toString();
         }
     }
+
+    // Add this method for image generation
+    public static String generateImage(String prompt) throws IOException {
+        // Example: using Hugging Face's stable-diffusion model endpoint
+        String IMAGE_API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2";
+        String API_TOKEN = System.getenv("API_KEY");
+
+        URL url = new URL(IMAGE_API_URL);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty("Authorization", "Bearer " + API_TOKEN);
+        conn.setRequestProperty("Content-Type", "application/json");
+        conn.setDoOutput(true);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("inputs", prompt);
+
+        String jsonInput = mapper.writeValueAsString(payload);
+
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(jsonInput.getBytes("utf-8"));
+        }
+
+        int code = conn.getResponseCode();
+        InputStream is = (code == 200) ? conn.getInputStream() : conn.getErrorStream();
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int len;
+        while ((len = is.read(buffer)) != -1) {
+            baos.write(buffer, 0, len);
+        }
+        // Return base64 string
+        return Base64.getEncoder().encodeToString(baos.toByteArray());
+    }
 }
