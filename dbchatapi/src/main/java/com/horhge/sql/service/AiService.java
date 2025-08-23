@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +39,20 @@ public class AiService {
             logger.debug("Sending prompt to HuggingFace for SQL generation");
             String hfResponse = HuggingFaceClient.generateText(fullPrompt);
             logger.debug("HuggingFace SQL response: {}", hfResponse);
+
+            // Check for Hugging Face API error in the response JSON
+            try {
+                JsonNode errorCheck = mapper.readTree(hfResponse);
+                if (errorCheck.has("error")) {
+                    String errMsg = errorCheck.get("error").asText();
+                    logger.error("Hugging Face API error: {}", errMsg);
+                    result.put("error", errMsg);
+                    return result;
+                }
+            } catch (Exception e) {
+                logger.warn("Could not parse Hugging Face response for error: {}", e.getMessage());
+            }
+
             JsonNode root = mapper.readTree(hfResponse);
             String aiContent = extractContent(root);
             result.put("aiResponse", aiContent); // keep original AI response for reference
@@ -45,12 +60,11 @@ public class AiService {
             // Extract SQL code
             String sql = extractSqlFromMarkdown(aiContent);
             if (sql != null && !sql.isEmpty()) {
-                logger.info("Extracted SQL: {}", sql);
+                logger.info("Extracted SQL");
                 result.put("query", sql);
 
                 // Execute query and fetch results
                 List<List<Object>> rowData = executeSqlQuery(sql);
-                logger.info("Query returned {} rows", rowData.size() - 1);
                 result.put("rowData", rowData);
 
                 // Build JSON array of results for insights
@@ -64,6 +78,20 @@ public class AiService {
                 logger.debug("Sending data to HuggingFace for summary/insights");
                 String insightsResponse = HuggingFaceClient.generateText(insightsPrompt);
                 logger.debug("HuggingFace summary response: {}", insightsResponse);
+
+                // Check for Hugging Face API error in the insights response
+                try {
+                    JsonNode errorCheck = mapper.readTree(insightsResponse);
+                    if (errorCheck.has("error")) {
+                        String errMsg = errorCheck.get("error").asText();
+                        logger.error("Hugging Face API error (insights): {}", errMsg);
+                        result.put("error", errMsg);
+                        return result;
+                    }
+                } catch (Exception e) {
+                    logger.warn("Could not parse Hugging Face insights response for error: {}", e.getMessage());
+                }
+
                 JsonNode insightsRoot = mapper.readTree(insightsResponse);
                 String insightsContent = extractContent(insightsRoot);
                 result.put("summary", insightsContent);
@@ -99,6 +127,10 @@ public class AiService {
                 // If no SQL, just return the original AI response as summary
                 result.put("summary", aiContent);
             }
+        } catch (IOException e) {
+            logger.error("Error in queryAi: {}", e.getMessage(), e);
+            // Propagate Hugging Face API error to frontend
+            result.put("error", e.getMessage());
         } catch (Exception e) {
             logger.error("Error in queryAi: {}", e.getMessage(), e);
             result.put("error", e.getMessage());
@@ -136,6 +168,12 @@ public class AiService {
     // Execute query with headers
     private List<List<Object>> executeSqlQuery(String sql) {
         List<List<Object>> rows = new ArrayList<>();
+        String trimmed = sql.trim().toLowerCase(Locale.ROOT);
+        if (trimmed.startsWith("create") || trimmed.startsWith("insert") || trimmed.startsWith("update")) {
+            logger.warn("Blocked forbidden SQL command: {}", sql);
+            rows.add(List.of("SQL Error: Only SELECT queries are allowed. CREATE, INSERT, and UPDATE are not permitted."));
+            return rows;
+        }
         try {
             logger.debug("Executing SQL query: {}", sql);
             jdbcTemplate.query(sql, rs -> {

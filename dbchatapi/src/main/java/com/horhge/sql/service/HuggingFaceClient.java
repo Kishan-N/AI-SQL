@@ -17,7 +17,7 @@ public class HuggingFaceClient {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public static String generateText(String prompt) throws IOException {
-        logger.info("Sending prompt to HuggingFace: {}", prompt);
+        logger.info("Sending prompt to HuggingFace.");
         URL url = new URL(API_URL);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
@@ -70,8 +70,8 @@ public class HuggingFaceClient {
     // Add this method for image generation
     public static String generateImage(String prompt) throws IOException {
         logger.info("Sending image generation prompt to HuggingFace: {}", prompt);
-        String IMAGE_API_URL = "https://router.huggingface.co/together/v1/images/generations";
-        String model = "black-forest-labs/FLUX.1-dev";
+        String IMAGE_API_URL = "https://router.huggingface.co/nebius/v1/images/generations";
+        String model = "sd-legacy/stable-diffusion-v1-5";
 
         URL url = new URL(IMAGE_API_URL);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -115,6 +115,12 @@ public class HuggingFaceClient {
                 logger.info("Image base64 string extracted from HuggingFace response");
                 return imgNode.get("b64_json").asText();
             }
+        }
+        // If error message present, propagate it
+        if (node.has("error")) {
+            String errMsg = node.get("error").asText();
+            logger.warn("HuggingFace image API error: {}", errMsg);
+            throw new IOException(errMsg);
         }
         logger.warn("No image found in HuggingFace response");
         throw new IOException("No image found in HuggingFace response");
