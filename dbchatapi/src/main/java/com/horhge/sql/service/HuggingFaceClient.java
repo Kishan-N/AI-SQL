@@ -43,8 +43,8 @@ public class HuggingFaceClient {
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("messages", List.of(systemMsg, userMsg));
-        // payload.put("model", "openai/gpt-oss-120b:groq");
-        payload.put("model", "hf.co/bartowski/Qwen2.5-3B-Instruct-GGUF:Q4_K_M"); // Local Ollama Server
+        payload.put("model", "openai/gpt-oss-120b:groq");
+        //payload.put("model", "hf.co/bartowski/Qwen2.5-3B-Instruct-GGUF:Q4_K_M"); // Local Ollama Server
         payload.put("stream", false);
 
         String jsonInput = mapper.writeValueAsString(payload);
