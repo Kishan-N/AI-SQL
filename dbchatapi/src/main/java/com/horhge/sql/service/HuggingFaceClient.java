@@ -1,18 +1,23 @@
 package com.horhge.sql.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HuggingFaceClient {
+    private static final Logger logger = LoggerFactory.getLogger(HuggingFaceClient.class);
     private static final String API_URL = "https://router.huggingface.co/v1/chat/completions";
     private static final String API_TOKEN = System.getenv("API_KEY");
 
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public static String generateText(String prompt) throws IOException {
+        logger.info("Sending prompt to HuggingFace: {}", prompt);
         URL url = new URL(API_URL);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
@@ -24,7 +29,9 @@ public class HuggingFaceClient {
         String systemTemplate = """
             You are an AI assistant that helps with SQL databases.
             Always respond in JSON with the following keys:
-            Summary, SQL, Explanation, Data
+            Summary, SQL, Explanation, Data, ChartType
+            ChartType should be one of: bar, pie, line, scatter, histogram, or leave blank if not applicable.
+            If the data is suitable for a chart, suggest the most appropriate chart type.
             """;
 
         // build request payload safely (no string concat)
@@ -37,6 +44,7 @@ public class HuggingFaceClient {
         payload.put("stream", false);
 
         String jsonInput = mapper.writeValueAsString(payload);
+        logger.debug("HuggingFace request payload: {}", jsonInput);
 
         // send request
         try (OutputStream os = conn.getOutputStream()) {
@@ -45,6 +53,7 @@ public class HuggingFaceClient {
 
         // read response
         int code = conn.getResponseCode();
+        logger.debug("HuggingFace response code: {}", code);
         InputStream is = (code == 200) ? conn.getInputStream() : conn.getErrorStream();
 
         try (BufferedReader br = new BufferedReader(new InputStreamReader(is, "utf-8"))) {
@@ -53,15 +62,16 @@ public class HuggingFaceClient {
             while ((line = br.readLine()) != null) {
                 response.append(line);
             }
+            logger.debug("HuggingFace response: {}", response.length() > 200 ? response.substring(0, 200) + "..." : response.toString());
             return response.toString();
         }
     }
 
     // Add this method for image generation
     public static String generateImage(String prompt) throws IOException {
-        // Example: using Hugging Face's stable-diffusion model endpoint
-        String IMAGE_API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2";
-        String API_TOKEN = System.getenv("API_KEY");
+        logger.info("Sending image generation prompt to HuggingFace: {}", prompt);
+        String IMAGE_API_URL = "https://router.huggingface.co/together/v1/images/generations";
+        String model = "black-forest-labs/FLUX.1-dev";
 
         URL url = new URL(IMAGE_API_URL);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -70,25 +80,43 @@ public class HuggingFaceClient {
         conn.setRequestProperty("Content-Type", "application/json");
         conn.setDoOutput(true);
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("inputs", prompt);
-
-        String jsonInput = mapper.writeValueAsString(payload);
+        // Build payload
+        String payload = String.format(
+                "{\"response_format\":\"b64_json\",\"prompt\":%s,\"model\":\"%s\"}",
+                mapper.writeValueAsString(prompt), model
+        );
+        logger.debug("HuggingFace image request payload: {}", payload);
 
         try (OutputStream os = conn.getOutputStream()) {
-            os.write(jsonInput.getBytes("utf-8"));
+            os.write(payload.getBytes("utf-8"));
         }
 
         int code = conn.getResponseCode();
+        logger.debug("HuggingFace image response code: {}", code);
         InputStream is = (code == 200) ? conn.getInputStream() : conn.getErrorStream();
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        byte[] buffer = new byte[8192];
-        int len;
-        while ((len = is.read(buffer)) != -1) {
-            baos.write(buffer, 0, len);
+        // Read response as string
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, "utf-8"))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
         }
-        // Return base64 string
-        return Base64.getEncoder().encodeToString(baos.toByteArray());
+        String responseStr = sb.toString();
+        logger.debug("HuggingFace image response: {}", responseStr.length() > 200 ? responseStr.substring(0, 200) + "..." : responseStr);
+
+        // Parse JSON and extract base64 image
+        JsonNode node = mapper.readTree(responseStr);
+        // The API returns: { "data": [ { "b64_json": "..." } ] }
+        if (node.has("data") && node.get("data").isArray() && node.get("data").size() > 0) {
+            JsonNode imgNode = node.get("data").get(0);
+            if (imgNode.has("b64_json")) {
+                logger.info("Image base64 string extracted from HuggingFace response");
+                return imgNode.get("b64_json").asText();
+            }
+        }
+        logger.warn("No image found in HuggingFace response");
+        throw new IOException("No image found in HuggingFace response");
     }
 }

@@ -9,9 +9,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class AiService {
+    private static final Logger logger = LoggerFactory.getLogger(AiService.class);
+
     @Value("${ai.endpoint.url}")
     private String aiEndpointUrl;
 
@@ -25,12 +29,15 @@ public class AiService {
     public Map<String, Object> queryAi(String prompt) {
         Map<String, Object> result = new HashMap<>();
         try {
+            logger.info("Received prompt: {}", prompt);
             // Build schema-aware prompt
             String schemaInfo = getDatabaseSchema();
             String fullPrompt = "Database schema:\n" + schemaInfo + "\n\nUser question: " + prompt;
 
             // 1st AI call: generate SQL
+            logger.debug("Sending prompt to HuggingFace for SQL generation");
             String hfResponse = HuggingFaceClient.generateText(fullPrompt);
+            logger.debug("HuggingFace SQL response: {}", hfResponse);
             JsonNode root = mapper.readTree(hfResponse);
             String aiContent = extractContent(root);
             result.put("aiResponse", aiContent); // keep original AI response for reference
@@ -38,10 +45,12 @@ public class AiService {
             // Extract SQL code
             String sql = extractSqlFromMarkdown(aiContent);
             if (sql != null && !sql.isEmpty()) {
+                logger.info("Extracted SQL: {}", sql);
                 result.put("query", sql);
 
                 // Execute query and fetch results
                 List<List<Object>> rowData = executeSqlQuery(sql);
+                logger.info("Query returned {} rows", rowData.size() - 1);
                 result.put("rowData", rowData);
 
                 // Build JSON array of results for insights
@@ -52,29 +61,46 @@ public class AiService {
                         + "Original question: " + prompt + "\n"
                         + "Data: " + dataJson;
 
+                logger.debug("Sending data to HuggingFace for summary/insights");
                 String insightsResponse = HuggingFaceClient.generateText(insightsPrompt);
+                logger.debug("HuggingFace summary response: {}", insightsResponse);
                 JsonNode insightsRoot = mapper.readTree(insightsResponse);
                 String insightsContent = extractContent(insightsRoot);
                 result.put("summary", insightsContent);
 
-                // 3rd AI call: generate chart image if data exists
-                if (rowData.size() > 1) {
-                    String chartType = extractChartTypeFromPrompt(prompt);
-                    String chartPrompt = "Given the following data in JSON, generate a " +
-                        (chartType.isEmpty() ? "chart" : chartType) +
-                        " that best visualizes the data for a presentation. " +
-                        "Return a base64-encoded PNG image. Data: " + dataJson;
+                // Try to extract ChartType from the AI's JSON response
+                String aiChartType = null;
+                try {
+                    // Try to parse the summary as JSON and extract ChartType
+                    JsonNode summaryJson = null;
+                    try { summaryJson = mapper.readTree(insightsContent); } catch (Exception ignore) {}
+                    if (summaryJson != null && summaryJson.has("ChartType")) {
+                        aiChartType = summaryJson.get("ChartType").asText();
+                        logger.info("AI suggested chart type: {}", aiChartType);
+                    }
+                } catch (Exception e) {
+                    logger.warn("Could not extract ChartType from AI summary: {}", e.getMessage());
+                }
 
-                    String chartResponse = HuggingFaceClient.generateImage(chartPrompt);
-                    // Assume generateImage returns a base64 string or a JSON with { "image": "..." }
-                    String chartImage = extractImageFromResponse(chartResponse);
-                    result.put("chartImage", chartImage);
+                // 3rd: generate chart image if data exists
+                if (rowData.size() > 1) {
+                    String chartType = (aiChartType != null && !aiChartType.isBlank()) ? aiChartType : extractChartTypeFromPrompt(prompt);
+                    try {
+                        String chartImage = ChartGenerator.generateChart(rowData, chartType);
+                        logger.info("Chart generated using JFreeChart, type: {}", chartType);
+                        result.put("chartImage", chartImage);
+                    } catch (Exception e) {
+                        logger.error("Error generating chart image: {}", e.getMessage(), e);
+                        result.put("chartImageError", e.getMessage());
+                    }
                 }
             } else {
+                logger.warn("No SQL extracted from AI content. Returning AI content as summary.");
                 // If no SQL, just return the original AI response as summary
                 result.put("summary", aiContent);
             }
         } catch (Exception e) {
+            logger.error("Error in queryAi: {}", e.getMessage(), e);
             result.put("error", e.getMessage());
         }
         return result;
@@ -111,6 +137,7 @@ public class AiService {
     private List<List<Object>> executeSqlQuery(String sql) {
         List<List<Object>> rows = new ArrayList<>();
         try {
+            logger.debug("Executing SQL query: {}", sql);
             jdbcTemplate.query(sql, rs -> {
                 int columnCount = rs.getMetaData().getColumnCount();
                 if (rows.isEmpty()) {
@@ -127,6 +154,7 @@ public class AiService {
                 rows.add(row);
             });
         } catch (Exception e) {
+            logger.error("SQL execution error: {}", e.getMessage(), e);
             rows.add(List.of("SQL Error: " + e.getMessage()));
         }
         return rows;
@@ -166,7 +194,9 @@ public class AiService {
                 }
             }
             tables.close();
+            logger.debug("Database schema read successfully");
         } catch (Exception e) {
+            logger.error("Could not read schema: {}", e.getMessage(), e);
             schema.append("Could not read schema: ").append(e.getMessage());
         }
         return schema.toString();
@@ -206,7 +236,7 @@ public class AiService {
             }
             // fallback: if response is just base64 string
             if (response.trim().startsWith("iVBOR")) return response.trim();
-        } catch (Exception ignore) {}
+        } catch (Exception error) {logger.error(String.valueOf(error));}
         return "";
     }
 }

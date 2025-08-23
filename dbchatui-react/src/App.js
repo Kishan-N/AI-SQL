@@ -9,6 +9,9 @@ function App() {
   const [loading, setLoading] = useState(false);
  const [huggingfaceResult, setHuggingfaceResult] = useState('');
   const [hfPrompt, setHfPrompt] = useState('');
+  const [imagePrompt, setImagePrompt] = useState('');
+  const [generatedImage, setGeneratedImage] = useState('');
+  const [imageError, setImageError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -56,6 +59,23 @@ function App() {
    setHuggingfaceResult(content);
  };
 
+ const handleGenerateImage = async () => {
+  setGeneratedImage('');
+  setImageError('');
+  try {
+    const response = await fetch('/api/generate-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: imagePrompt }),
+    });
+    const data = await response.json();
+    if (data.error) setImageError(data.error);
+    else setGeneratedImage(data.image);
+  } catch (err) {
+    setImageError('Failed to generate image.');
+  }
+};
+
  const renderSummary = (summary) => {
   let parsed;
   try {
@@ -63,18 +83,28 @@ function App() {
   } catch {
     parsed = null;
   }
-  if (parsed && typeof parsed === 'object' && parsed.Summary) {
+  if (parsed && typeof parsed === 'object') {
     return (
       <div>
-        <div style={{ background: '#f8f8f8', padding: 12, borderRadius: 4, marginBottom: 8 }}>
-          <ReactMarkdown>{parsed.Summary}</ReactMarkdown>
-        </div>
+        {parsed.Summary && (
+          <div style={{ background: '#f8f8f8', padding: 12, borderRadius: 4, marginBottom: 8 }}>
+            <ReactMarkdown>{parsed.Summary}</ReactMarkdown>
+          </div>
+        )}
         {parsed.Explanation && (
           <div style={{ marginBottom: 8 }}>
             <strong>Explanation:</strong>
             <ReactMarkdown>{parsed.Explanation}</ReactMarkdown>
           </div>
         )}
+      </div>
+    );
+  }
+  // If summary is a markdown table (pipe table)
+  if (typeof summary === 'string' && summary.trim().startsWith('|') && summary.includes('\n|')) {
+    return (
+      <div style={{ background: '#f8f8f8', padding: 12, borderRadius: 4 }}>
+        <ReactMarkdown>{summary}</ReactMarkdown>
       </div>
     );
   }
@@ -194,6 +224,29 @@ function App() {
           <pre style={{ background: '#f4f4f4', padding: 8 }}>
             {huggingfaceResult}
           </pre>
+        </div>
+      </div>
+      <div style={{ marginTop: 32, padding: 16, border: '1px solid #ccc' }}>
+        <h3>Test Image Generation API</h3>
+        <input
+          type="text"
+          value={imagePrompt}
+          onChange={e => setImagePrompt(e.target.value)}
+          placeholder="Enter prompt for image generation"
+          style={{ width: '60%' }}
+        />
+        <button onClick={handleGenerateImage} style={{ marginLeft: 8 }}>
+          Generate Image
+        </button>
+        <div style={{ marginTop: 16 }}>
+          {imageError && <span style={{ color: 'red' }}>{imageError}</span>}
+          {generatedImage && (
+            <img
+              src={`data:image/png;base64,${generatedImage}`}
+              alt="Generated"
+              style={{ maxWidth: '100%', border: '1px solid #ccc', borderRadius: 8 }}
+            />
+          )}
         </div>
       </div>
     </div>
