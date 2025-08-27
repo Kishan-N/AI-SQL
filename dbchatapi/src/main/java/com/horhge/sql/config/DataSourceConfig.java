@@ -1,31 +1,27 @@
 package com.horhge.sql.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
 
 @Configuration
 public class DataSourceConfig {
 
-    @Value("${spring.datasource.url}")
-    private String url;
-
-    @Value("${spring.datasource.username}")
-    private String username;
-
-    @Value("${spring.datasource.password}")
-    private String password;
-
+    // Only create a DataSource if database properties are provided
     @Bean
+    @ConditionalOnProperty(name = "spring.datasource.url")
     public DataSource dataSource() {
-        return DataSourceBuilder.create()
-                .url(url)
-                .username(username)
-                .password(password)
-                .build();
+        return DataSourceBuilder.create().build();
+    }
+
+    // Only create JdbcTemplate if DataSource is available
+    @Bean
+    @ConditionalOnProperty(name = "spring.datasource.url")
+    public JdbcTemplate jdbcTemplate(DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
     }
 }
-

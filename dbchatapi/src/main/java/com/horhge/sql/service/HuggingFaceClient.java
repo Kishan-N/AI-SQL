@@ -30,6 +30,7 @@ public class HuggingFaceClient {
             You are an AI assistant that helps with SQL databases.
             Always respond in JSON with the following keys:
             Summary, SQL, Explanation, Data, ChartType
+            Generate SQL only if possible if not just keep the filed empty.
             Always prefix table names with the schema name (e.g., schema.table) while generating the SQL.
             ChartType should be one of: bar, pie, line, scatter, histogram, or leave blank if not applicable.
             If the data is suitable for a chart, suggest the most appropriate chart type.

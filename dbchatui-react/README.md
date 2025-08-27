@@ -1,4 +1,4 @@
-# AI Database Chat UI (React Frontend)
+# DB Chat UI (React Frontend)
 
 This is the React frontend for the AI-powered database chat UI.
 

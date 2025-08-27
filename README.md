@@ -1,4 +1,4 @@
-# AI Database Chat UI
+# DB Chat Chat UI
 
 A full-stack application for natural language querying of SQL databases, with AI-generated summaries, insights, and charting.  
 **Tech stack:** Java (Spring Boot), React, PostgreSQL, Hugging Face Inference API.
