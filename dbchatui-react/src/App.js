@@ -164,14 +164,25 @@ function App() {
       return (
         <div>
           {parsed.Summary && (
-            <div style={{ background: '#f8f8f8', padding: 12, borderRadius: 4, marginBottom: 8 }}>
-              <ReactMarkdown>{parsed.Summary}</ReactMarkdown>
+            <div style={{
+              background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
+              padding: 16,
+              borderRadius: 8,
+              marginBottom: 12,
+              color: '#ffffff',
+              border: '1px solid #404040'
+            }}>
+              <div className="markdown-content">
+                <ReactMarkdown>{parsed.Summary}</ReactMarkdown>
+              </div>
             </div>
           )}
           {parsed.Explanation && (
-            <div style={{ marginBottom: 8 }}>
-              <strong>Explanation:</strong>
-              <ReactMarkdown>{parsed.Explanation}</ReactMarkdown>
+            <div style={{ marginBottom: 12, color: '#ffffff' }}>
+              <strong style={{ color: '#dc2626', display: 'block', marginBottom: 8 }}>Explanation:</strong>
+              <div className="markdown-content">
+                <ReactMarkdown>{parsed.Explanation}</ReactMarkdown>
+              </div>
             </div>
           )}
         </div>
@@ -185,17 +196,22 @@ function App() {
         const header = lines[0].split('|').slice(1, -1).map(cell => cell.trim());
         const rows = lines.slice(2).map(line => line.split('|').slice(1, -1).map(cell => cell.trim()));
         return (
-          <div style={{ background: '#f8f8f8', padding: 12, borderRadius: 4 }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
+            padding: 16,
+            borderRadius: 8,
+            border: '1px solid #404040'
+          }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {header.map((cell, i) => <th key={i} style={{ border: '1px solid #ddd', padding: 8 }}>{cell}</th>)}
+                  {header.map((cell, i) => <th key={i} style={{ border: '1px solid #404040', padding: 8, background: '#dc2626', color: '#ffffff' }}>{cell}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row, i) => (
                   <tr key={i}>
-                    {row.map((cell, j) => <td key={j} style={{ border: '1px solid #ddd', padding: 8 }}>{cell}</td>)}
+                    {row.map((cell, j) => <td key={j} style={{ border: '1px solid #404040', padding: 8, background: '#333333', color: '#ffffff' }}>{cell}</td>)}
                   </tr>
                 ))}
               </tbody>
@@ -206,8 +222,16 @@ function App() {
     }
     // fallback: render as markdown
     return (
-      <div style={{ background: '#f8f8f8', padding: 12, borderRadius: 4 }}>
-        <ReactMarkdown>{summary}</ReactMarkdown>
+      <div style={{
+        background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
+        padding: 16,
+        borderRadius: 8,
+        color: '#ffffff',
+        border: '1px solid #404040'
+      }}>
+        <div className="markdown-content">
+          <ReactMarkdown>{summary}</ReactMarkdown>
+        </div>
       </div>
     );
   };
@@ -217,96 +241,133 @@ function App() {
   }, []);
 
   return (
-    <div>
+    <div style={{ minHeight: '100vh' }}>
           <nav style={{
             display: 'flex',
             alignItems: 'center',
-            background: '#fff',
-            border: '1px solid #000',
-            padding: '12px 32px',
+            background: '#2d2d2d',
+            border: '1px solid #404040',
+            borderBottom: '3px solid #dc2626',
+            padding: '16px 32px',
             marginBottom: 32,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-            position: 'relative'
+            boxShadow: '0 8px 25px rgba(0,0,0,0.4)',
+            position: 'relative',
+            backdropFilter: 'blur(10px)'
           }}>
             <img
               src="/logo.png"
-              alt="SocGen Logo"
-              style={{ height: 40, marginRight: 16 }}
+              alt="DB Chat Logo"
+              style={{
+                height: 45,
+                marginRight: 20,
+                filter: 'brightness(1.1) contrast(1.1)',
+                borderRadius: 6
+              }}
             />
-            <span style={{ color: '#000', fontWeight: 'bold', fontSize: 20, marginRight: 24 }}>
+
+            <span style={{
+              color: '#ffffff',
+              fontWeight: 700,
+              fontSize: 22,
+              marginRight: 32,
+              background: 'linear-gradient(135deg, #ffffff 0%, #dc2626 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+            }}>
               DB Chat Assistant
             </span>
-            {/* Separator after name */}
+            {/* Enhanced Separator */}
             <div style={{
-              width: 1,
-              height: 32,
-              background: '#e0e0e0',
-              margin: '0 24px 0 0'
+              width: 2,
+              height: 40,
+              background: 'linear-gradient(180deg, transparent 0%, #dc2626 50%, transparent 100%)',
+              margin: '0 32px 0 0',
+              borderRadius: 1
             }} />
-            {/* Inline Tabs with animated background and hover */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            {/* Enhanced Tabs */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {['chat', 'dbconfig'].map(tab => (
                 <div
                   key={tab}
                   style={{
-                    padding: '8px 20px',
-                    color: page === tab ? '#d40000' : '#444',
+                    padding: '12px 24px',
+                    color: page === tab ? '#ffffff' : '#cccccc',
                     fontWeight: page === tab ? 700 : 500,
                     fontSize: 15,
                     cursor: 'pointer',
-                    borderBottom: page === tab ? '2px solid #d40000' : '2px solid transparent',
-                    background:
-                      page === tab || hoveredTab === tab
-                        ? 'rgba(212,0,0,0.10)'
-                        : 'transparent',
-                    borderRadius: 6,
-                    transition: 'background 0.3s, color 0.3s, border-bottom 0.3s'
+                    borderBottom: page === tab ? '3px solid #dc2626' : '3px solid transparent',
+                    background: page === tab
+                      ? 'linear-gradient(135deg, rgba(220,38,38,0.2) 0%, rgba(185,28,28,0.1) 100%)'
+                      : hoveredTab === tab
+                      ? 'rgba(220,38,38,0.1)'
+                      : 'transparent',
+                    borderRadius: '8px 8px 0 0',
+                    transition: 'all 0.3s ease',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    position: 'relative',
+                    overflow: 'hidden'
                   }}
                   onClick={() => setPage(tab)}
                   onMouseEnter={() => setHoveredTab(tab)}
                   onMouseLeave={() => setHoveredTab(null)}
                 >
+                  {/* Tab glow effect */}
+                  {page === tab && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: 'linear-gradient(135deg, rgba(220,38,38,0.1) 0%, transparent 100%)',
+                      pointerEvents: 'none'
+                    }} />
+                  )}
                   {tab === 'chat' ? 'Chat' : 'DB Config'}
                 </div>
               ))}
             </div>
             <div style={{ flex: 1 }} />
-        {/* Advanced Toggle */}
-        <div style={{ marginLeft: 24 }}>
-          <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: 14 }}>
-            <span style={{ marginRight: 8, color: '#888' }}>Advanced</span>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="checkbox"
-                checked={showTestApis}
-                onChange={handleToggleTestApis}
-                style={{
-                  width: 36,
-                  height: 20,
-                  appearance: 'none',
-                  background: showTestApis ? '#d40000' : '#ccc',
-                  borderRadius: 12,
-                  outline: 'none',
-                  border: 'none', // <-- add this
-                  transition: 'background 0.2s',
-                  cursor: 'pointer',
-                  margin: 0, // <-- add this to remove any default spacing
-                  display: 'block' // <-- ensure it doesn't overlap
-                }}
-              />
-              <span style={{
-                position: 'absolute',
-                width: 16,
-                height: 16,
-                borderRadius: '50%',
-                background: '#fff',
-                left: showTestApis ? 18 : 2,
-                top: 2,
-                transition: 'left 0.2s',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                pointerEvents: 'none'
-              }} />
-            </div>
+        {/* Enhanced Advanced Toggle */}
+        <div style={{ marginLeft: 32 }}>
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            cursor: 'pointer',
+            fontSize: 14,
+            color: '#cccccc',
+            fontWeight: 500,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            <span style={{ marginRight: 12 }}>Advanced</span>
+            <input
+              type="checkbox"
+              checked={showTestApis}
+              onChange={handleToggleTestApis}
+              style={{
+                width: 48,
+                height: 26,
+                appearance: 'none',
+                background: showTestApis
+                  ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
+                  : '#404040',
+                borderRadius: 13,
+                outline: 'none',
+                border: 'none',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer',
+                margin: 0,
+                display: 'block',
+                boxShadow: showTestApis
+                  ? '0 0 15px rgba(220, 38, 38, 0.4)'
+                  : '0 2px 6px rgba(0,0,0,0.3)',
+                position: 'relative'
+              }}
+            />
           </label>
         </div>
       </nav>
@@ -315,35 +376,59 @@ function App() {
           <DbConfig dbConfig={dbConfig} setDbConfig={setDbConfig} />
         ) : (
           <>
-            <h1>DB Chat</h1>
+            <h1>AI Database Chat</h1>
             <form onSubmit={handleSubmit} style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 12,
-              background: '#fafafa',
-              padding: 20,
-              borderRadius: 8,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-              marginBottom: 24
+              gap: 16,
+              background: 'linear-gradient(135deg, #2a2a2a 0%, #333333 100%)',
+              padding: 24,
+              borderRadius: 12,
+              boxShadow: '0 8px 25px rgba(0,0,0,0.4)',
+              marginBottom: 32,
+              border: '1px solid #404040',
+              position: 'relative',
+              overflow: 'hidden'
             }}>
+              {/* Form top accent */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 3,
+                background: 'linear-gradient(90deg, #dc2626, #b91c1c)'
+              }} />
               <input
                 type="text"
                 value={prompt}
                 onChange={e => setPrompt(e.target.value)}
-                placeholder="Enter your prompt..."
-                style={{ flex: 1, minWidth: 0 }}
+                placeholder="Ask me anything about your database..."
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  fontSize: '1.1rem',
+                  fontWeight: 400
+                }}
               />
               <button type="submit" disabled={loading || !prompt.trim()}>
-                {loading ? 'Thinking...' : 'Ask'}
+                {loading ? '🤔 Thinking...' : '🚀 ASK AI'}
               </button>
-              <label style={{ marginLeft: 8, fontSize: 14, display: 'flex', alignItems: 'center' }}>
+              <label style={{
+                marginLeft: 16,
+                fontSize: 14,
+                display: 'flex',
+                alignItems: 'center',
+                color: '#cccccc',
+                fontWeight: 500
+              }}>
                 <input
                   type="checkbox"
                   checked={enableChart}
                   onChange={e => setEnableChart(e.target.checked)}
-                  style={{ marginRight: 4 }}
+                  style={{ marginRight: 8 }}
                 />
-                Enable chart
+                Enable Chart Generation
               </label>
             </form>
             {loading && (
@@ -366,35 +451,48 @@ function App() {
             )}
             {result && (
               <div style={{
-                background: '#fff',
-                borderRadius: 8,
-                boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+                background: 'linear-gradient(135deg, #2a2a2a 0%, #333333 100%)',
+                borderRadius: 12,
+                boxShadow: '0 8px 25px rgba(0,0,0,0.4)',
                 padding: 28,
-                marginBottom: 32
+                marginBottom: 32,
+                border: '1px solid #404040',
+                position: 'relative',
+                overflow: 'hidden'
               }}>
-                <h2>Summary</h2>
+                {/* Result container top accent */}
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 3,
+                  background: 'linear-gradient(90deg, #dc2626, #b91c1c)'
+                }} />
+                <h2 style={{ marginTop: 0, marginBottom: 16 }}>Summary</h2>
                 {renderSummary(result.summary)}
                 {result.query && (
                   <div data-type="panel">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h2>Query</h2>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                      <h2 style={{ margin: 0 }}>Query</h2>
                       <button
                         onClick={handleCopyQuery}
                         style={{
-                          padding: '6px 12px',
+                          padding: '8px 16px',
                           fontSize: '0.9rem',
-                          backgroundColor: copiedToClipboard ? '#4CAF50' : '#f0f0f0',
-                          color: copiedToClipboard ? 'white' : 'black',
-                          border: '1px solid #ddd',
-                          borderRadius: '4px',
+                          backgroundColor: copiedToClipboard ? '#059669' : '#404040',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
                           cursor: 'pointer',
-                          transition: 'background-color 0.2s'
+                          transition: 'background-color 0.2s',
+                          fontWeight: 500
                         }}
                       >
                         {copiedToClipboard ? 'Copied!' : 'Copy Query'}
                       </button>
                     </div>
-                    <pre>{result.query}</pre>
+                    <pre style={{ marginTop: 0 }}>{result.query}</pre>
                   </div>
                 )}
                 {result.rowData && result.rowData.length > 0 && (
@@ -421,9 +519,14 @@ function App() {
                   </div>
                 )}
                 {result.insights && (
-                  <div data-type="panel" style={{ background: '#f0f8ff' }}>
-                    <h2>Insights</h2>
-                    <ReactMarkdown>{result.insights}</ReactMarkdown>
+                  <div data-type="panel" style={{
+                    background: 'linear-gradient(135deg, #0c4a6e 0%, #1e40af 100%)',
+                    border: '1px solid #2563eb'
+                  }}>
+                    <h2 style={{ color: '#ffffff' }}>Insights</h2>
+                    <div style={{ color: '#ffffff' }} className="markdown-content">
+                      <ReactMarkdown>{result.insights}</ReactMarkdown>
+                    </div>
                   </div>
                 )}
                 {result.chartImage && enableChart && (
@@ -433,7 +536,7 @@ function App() {
                       <img
                         src={`data:image/png;base64,${result.chartImage}`}
                         alt="Generated Chart"
-                        style={{ maxWidth: '100%', border: '1px solid #ccc', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+                        style={{ maxWidth: '100%', border: '1px solid #404040', borderRadius: 8, boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}
                       />
                     </div>
                   </div>
@@ -445,11 +548,22 @@ function App() {
               <div style={{
                 marginTop: 32,
                 padding: 24,
-                border: '1px solid #ccc',
-                borderRadius: 8,
-                background: '#fafafa',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+                border: '1px solid #404040',
+                borderRadius: 12,
+                background: 'linear-gradient(135deg, #2a2a2a 0%, #333333 100%)',
+                boxShadow: '0 8px 25px rgba(0,0,0,0.4)',
+                position: 'relative',
+                overflow: 'hidden'
               }}>
+                {/* Test section top accent */}
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 3,
+                  background: 'linear-gradient(90deg, #dc2626, #b91c1c)'
+                }} />
                 <h3>Test Hugging Face API</h3>
                 <input
                   type="text"
@@ -462,8 +576,13 @@ function App() {
                   Send to Hugging Face
                 </button>
                 <div style={{ marginTop: 16 }}>
-                  <strong>Hugging Face Response:</strong>
-                  <pre style={{ background: '#f4f4f4', padding: 8 }}>
+                  <strong style={{ color: '#dc2626' }}>Hugging Face Response:</strong>
+                  <pre style={{
+                    background: '#1a1a1a',
+                    padding: 8,
+                    color: '#ffffff',
+                    border: '1px solid #404040'
+                  }}>
                     {huggingfaceResult}
                   </pre>
                 </div>
@@ -474,11 +593,22 @@ function App() {
               <div style={{
                 marginTop: 32,
                 padding: 24,
-                border: '1px solid #ccc',
-                borderRadius: 8,
-                background: '#fafafa',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+                border: '1px solid #404040',
+                borderRadius: 12,
+                background: 'linear-gradient(135deg, #2a2a2a 0%, #333333 100%)',
+                boxShadow: '0 8px 25px rgba(0,0,0,0.4)',
+                position: 'relative',
+                overflow: 'hidden'
               }}>
+                {/* Test section top accent */}
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 3,
+                  background: 'linear-gradient(90deg, #dc2626, #b91c1c)'
+                }} />
                 <h3>Test Image Generation API</h3>
                 <input
                   type="text"
@@ -491,12 +621,12 @@ function App() {
                   Generate Image
                 </button>
                 <div style={{ marginTop: 16 }}>
-                  {imageError && <span style={{ color: 'red' }}>{imageError}</span>}
+                  {imageError && <span style={{ color: '#dc2626' }}>{imageError}</span>}
                   {generatedImage && (
                     <img
                       src={`data:image/png;base64,${generatedImage}`}
                       alt="Generated"
-                      style={{ maxWidth: '100%', border: '1px solid #ccc', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+                      style={{ maxWidth: '100%', border: '1px solid #404040', borderRadius: 8, boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}
                     />
                   )}
                 </div>
@@ -510,24 +640,36 @@ function App() {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                background: 'rgba(0,0,0,0.7)',
+                background: 'rgba(0,0,0,0.8)',
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                zIndex: 1000
+                zIndex: 1000,
+                backdropFilter: 'blur(5px)'
               }}>
                 <div style={{
-                  background: '#fff',
+                  background: 'linear-gradient(135deg, #2a2a2a 0%, #333333 100%)',
                   padding: 32,
-                  borderRadius: 8,
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                  borderRadius: 12,
+                  boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
                   width: '90%',
                   maxWidth: 400,
                   position: 'relative',
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  border: '1px solid #404040',
+                  color: '#ffffff'
                 }}>
-                  <h2 style={{ marginTop: 0, color: '#d40000' }}>Database Connection Required</h2>
-                  <p style={{ marginBottom: 24, fontSize: 16, color: '#666' }}>
+                  {/* Modal top accent */}
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 3,
+                    background: 'linear-gradient(90deg, #dc2626, #b91c1c)'
+                  }} />
+                  <h2 style={{ marginTop: 0, color: '#dc2626' }}>Database Connection Required</h2>
+                  <p style={{ marginBottom: 24, fontSize: 16, color: '#cccccc' }}>
                     Please configure the database connection settings before proceeding with your query.
                   </p>
                   <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
@@ -535,11 +677,12 @@ function App() {
                       onClick={() => setShowDbConfigModal(false)}
                       style={{
                         padding: '10px 20px',
-                        background: '#f0f0f0',
+                        background: '#404040',
                         borderRadius: 4,
-                        border: '1px solid #ddd',
+                        border: 'none',
                         cursor: 'pointer',
-                        fontSize: 14
+                        fontSize: 14,
+                        color: '#ffffff'
                       }}
                     >
                       Cancel
@@ -551,7 +694,7 @@ function App() {
                       }}
                       style={{
                         padding: '10px 20px',
-                        background: '#d40000',
+                        background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
                         color: '#fff',
                         borderRadius: 4,
                         border: 'none',
@@ -568,7 +711,7 @@ function App() {
                     top: 16,
                     right: 16,
                     cursor: 'pointer',
-                    color: '#888',
+                    color: '#cccccc',
                     fontSize: 18
                   }} onClick={() => setShowDbConfigModal(false)}>
                     &times;
