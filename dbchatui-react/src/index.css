@@ -476,3 +476,13 @@ nav label input[type="checkbox"]:checked::after {
   left: 25px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.4);
 }
+
+/* Logo area styling for better visibility */
+nav img[alt="DB Chat Logo"] {
+  filter: brightness(1.1) contrast(1.1) !important;
+  background: #ffffff !important;
+  padding: 8px !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+}
